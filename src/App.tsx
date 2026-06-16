@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import Login from '@/pages/Login'
 import Board from '@/pages/Board'
 import UserManagement from '@/pages/UserManagement'
+import BatchTaskCenter from '@/pages/BatchTaskCenter'
 import NotFound from '@/pages/NotFound'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -48,6 +49,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute allowedRoles={['admin']}>
         <UserManagement />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/batch-tasks',
+    element: (
+      <ProtectedRoute allowedRoles={['admin', 'reviewer', 'submitter']}>
+        <BatchTaskCenter />
       </ProtectedRoute>
     ),
   },

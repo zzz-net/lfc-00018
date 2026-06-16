@@ -117,6 +117,69 @@ CREATE INDEX IF NOT EXISTS idx_admin_ops_type ON admin_operation_logs(operation_
 CREATE INDEX IF NOT EXISTS idx_admin_ops_operator ON admin_operation_logs(operator_id);
 `
 
+export const CREATE_BATCH_TASKS_TABLE = `
+CREATE TABLE IF NOT EXISTS batch_tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_name TEXT NOT NULL,
+  created_by INTEGER NOT NULL,
+  created_by_name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft', 'pending_review', 'executing', 'completed', 'failed', 'cancelled')),
+  file_name TEXT NOT NULL,
+  file_size INTEGER NOT NULL DEFAULT 0,
+  field_mapping TEXT NOT NULL DEFAULT '{}',
+  total_count INTEGER NOT NULL DEFAULT 0,
+  new_count INTEGER NOT NULL DEFAULT 0,
+  role_change_count INTEGER NOT NULL DEFAULT 0,
+  disable_count INTEGER NOT NULL DEFAULT 0,
+  duplicate_count INTEGER NOT NULL DEFAULT 0,
+  name_conflict_count INTEGER NOT NULL DEFAULT 0,
+  raw_csv_content TEXT NOT NULL DEFAULT '',
+  executed_at DATETIME,
+  executed_by INTEGER,
+  executed_by_name TEXT,
+  result_summary TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+`
+
+export const CREATE_BATCH_TASKS_INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_batch_tasks_status ON batch_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_batch_tasks_created_by ON batch_tasks(created_by);
+CREATE INDEX IF NOT EXISTS idx_batch_tasks_created_at ON batch_tasks(created_at);
+`
+
+export const CREATE_BATCH_TASK_ITEMS_TABLE = `
+CREATE TABLE IF NOT EXISTS batch_task_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL,
+  item_type TEXT NOT NULL CHECK(item_type IN ('new', 'role_change', 'disable', 'duplicate_account', 'name_conflict', 'valid')),
+  line_number INTEGER NOT NULL,
+  username TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL DEFAULT '',
+  email TEXT,
+  role TEXT,
+  old_role TEXT,
+  password TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'ignored', 'executing', 'success', 'failed', 'skipped')),
+  skip_reason TEXT,
+  error_message TEXT,
+  user_id INTEGER,
+  row_data TEXT NOT NULL DEFAULT '{}',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES batch_tasks(id) ON DELETE CASCADE
+);
+`
+
+export const CREATE_BATCH_TASK_ITEMS_INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_batch_task_items_task_id ON batch_task_items(task_id);
+CREATE INDEX IF NOT EXISTS idx_batch_task_items_item_type ON batch_task_items(item_type);
+CREATE INDEX IF NOT EXISTS idx_batch_task_items_status ON batch_task_items(status);
+CREATE INDEX IF NOT EXISTS idx_batch_task_items_username ON batch_task_items(username);
+`
+
 export const INITIAL_USERS_DATA = `
 INSERT OR IGNORE INTO users (username, password_hash, name, role) VALUES
 ('admin', '$2a$10$u08PIZ4LDv.fyIcdYIdKAeTe5vOrXjSdnPA9Scgf8jkdPFqWEJNGi', '系统管理员', 'admin'),
@@ -133,9 +196,13 @@ export const SCHEMA_SQL = [
   CREATE_OPERATION_LOGS_TABLE,
   CREATE_IMPORT_DRAFTS_TABLE,
   CREATE_ADMIN_OPERATION_LOGS_TABLE,
+  CREATE_BATCH_TASKS_TABLE,
+  CREATE_BATCH_TASK_ITEMS_TABLE,
   CREATE_INDEXES,
   CREATE_IMPORT_DRAFTS_INDEXES,
   CREATE_ADMIN_OPERATION_LOGS_INDEXES,
+  CREATE_BATCH_TASKS_INDEXES,
+  CREATE_BATCH_TASK_ITEMS_INDEXES,
   INITIAL_USERS_DATA,
 ].join('\n')
 

@@ -15,6 +15,11 @@ import type {
   AdminOperationLog,
   PrecheckRowError,
   UserImportDraftPayload,
+  BatchTask,
+  BatchTaskItem,
+  BatchTaskResultSummary,
+  BatchTaskItemStatus,
+  BatchTaskItemType,
 } from '../../shared/types'
 
 const BASE_URL = '/api'
@@ -254,5 +259,113 @@ export const api = {
       const qs = params.toString()
       return request<AdminOperationLog[]>(`/users/admin-logs${qs ? `?${qs}` : ''}`)
     },
+  },
+
+  batchTasks: {
+    getList: (limit = 50) =>
+      request<BatchTask[]>(`/batch-tasks?limit=${limit}`),
+
+    getDetail: (id: number) =>
+      request<{ task: BatchTask; items: BatchTaskItem[] }>(`/batch-tasks/${id}`),
+
+    getSummary: (id: number) =>
+      request<{
+        id: number
+        taskName: string
+        status: BatchTask['status']
+        totalCount: number
+        createdAt: string
+        createdByName: string
+      }>(`/batch-tasks/${id}/summary`),
+
+    create: (payload: {
+      taskName: string
+      rawCsv: string
+      fileName: string
+      fileSize: number
+      fieldMapping?: FieldMapping
+    }) =>
+      request<{
+        taskId: number
+        totalCount: number
+        newCount: number
+        roleChangeCount: number
+        disableCount: number
+        duplicateCount: number
+        nameConflictCount: number
+        items: BatchTaskItem[]
+      }>('/batch-tasks', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    createWithFile: (file: File, taskName: string, fieldMapping?: FieldMapping) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('taskName', taskName)
+      if (fieldMapping) {
+        formData.append('fieldMapping', JSON.stringify(fieldMapping))
+      }
+      return request<{
+        taskId: number
+        totalCount: number
+        newCount: number
+        roleChangeCount: number
+        disableCount: number
+        duplicateCount: number
+        nameConflictCount: number
+        items: BatchTaskItem[]
+      }>('/batch-tasks', {
+        method: 'POST',
+        body: formData,
+        headers: {},
+      })
+    },
+
+    updateItemStatus: (itemId: number, status: BatchTaskItemStatus, skipReason?: string) =>
+      request<{ updated: boolean }>(`/batch-tasks/items/${itemId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, skipReason }),
+      }),
+
+    bulkIgnoreByType: (taskId: number, itemType: BatchTaskItemType) =>
+      request<{ count: number }>(`/batch-tasks/${taskId}/bulk-ignore/${itemType}`, {
+        method: 'POST',
+      }),
+
+    bulkRestoreByType: (taskId: number, itemType: BatchTaskItemType) =>
+      request<{ count: number }>(`/batch-tasks/${taskId}/bulk-restore/${itemType}`, {
+        method: 'POST',
+      }),
+
+    execute: (taskId: number) =>
+      request<BatchTaskResultSummary>(`/batch-tasks/${taskId}/execute`, {
+        method: 'POST',
+      }),
+
+    remove: (taskId: number) =>
+      request<{ deleted: boolean }>(`/batch-tasks/${taskId}`, {
+        method: 'DELETE',
+      }),
+
+    exportConflicts: (taskId: number) =>
+      fetch(`${BASE_URL}/batch-tasks/${taskId}/export-conflicts`, {
+        method: 'GET',
+        credentials: 'include',
+      }).then(async (r) => {
+        if (!r.ok) {
+          const data = (await r.json()) as ApiResponse
+          throw new Error(data.error || '导出失败')
+        }
+        const blob = await r.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `conflicts_task_${taskId}.csv`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      }),
   },
 }

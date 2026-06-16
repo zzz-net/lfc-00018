@@ -272,3 +272,127 @@ export interface UserImportDraftPayload {
   fileSize: number;
   rawCsvContent: string;
 }
+
+export type BatchTaskStatus = 'draft' | 'pending_review' | 'executing' | 'completed' | 'failed' | 'cancelled';
+export type BatchTaskItemType = 'new' | 'role_change' | 'disable' | 'duplicate_account' | 'name_conflict' | 'valid';
+export type BatchTaskItemStatus = 'pending' | 'ignored' | 'executing' | 'success' | 'failed' | 'skipped';
+
+export const BATCH_TASK_STATUS_LABELS: Record<BatchTaskStatus, string> = {
+  draft: '草稿',
+  pending_review: '待执行',
+  executing: '执行中',
+  completed: '已完成',
+  failed: '执行失败',
+  cancelled: '已取消',
+};
+
+export const BATCH_TASK_ITEM_TYPE_LABELS: Record<BatchTaskItemType, string> = {
+  new: '新增成员',
+  role_change: '角色变更',
+  disable: '停用成员',
+  duplicate_account: '重复账号',
+  name_conflict: '同名冲突',
+  valid: '有效记录',
+};
+
+export const BATCH_TASK_ITEM_STATUS_LABELS: Record<BatchTaskItemStatus, string> = {
+  pending: '待处理',
+  ignored: '已忽略',
+  executing: '执行中',
+  success: '成功',
+  failed: '失败',
+  skipped: '已跳过',
+};
+
+export interface BatchTask {
+  id: number;
+  taskName: string;
+  createdBy: number;
+  createdByName: string;
+  status: BatchTaskStatus;
+  fileName: string;
+  fileSize: number;
+  fieldMapping: FieldMapping;
+  totalCount: number;
+  newCount: number;
+  roleChangeCount: number;
+  disableCount: number;
+  duplicateCount: number;
+  nameConflictCount: number;
+  rawCsvContent: string;
+  executedAt: string | null;
+  executedBy: number | null;
+  executedByName: string | null;
+  resultSummary: BatchTaskResultSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BatchTaskItem {
+  id: number;
+  taskId: number;
+  itemType: BatchTaskItemType;
+  lineNumber: number;
+  username: string;
+  name: string;
+  email: string | null;
+  role: string | null;
+  oldRole: string | null;
+  password: string | null;
+  status: BatchTaskItemStatus;
+  skipReason: string | null;
+  errorMessage: string | null;
+  userId: number | null;
+  rowData: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BatchTaskResultSummary {
+  successCount: number;
+  failedCount: number;
+  skippedCount: number;
+  ignoredCount: number;
+  newSuccess: number;
+  roleChangeSuccess: number;
+  disableSuccess: number;
+  failedItems: Array<{
+    id: number;
+    username: string;
+    name: string;
+    error: string;
+  }>;
+  skippedItems: Array<{
+    id: number;
+    username: string;
+    name: string;
+    reason: string;
+  }>;
+}
+
+export interface CreateBatchTaskRequest {
+  taskName: string;
+  rawCsv: string;
+  fileName: string;
+  fileSize: number;
+  fieldMapping: FieldMapping;
+}
+
+export interface BatchTaskDetail {
+  task: BatchTask;
+  items: BatchTaskItem[];
+}
+
+export interface UpdateBatchTaskItemRequest {
+  status?: BatchTaskItemStatus;
+  skipReason?: string;
+}
+
+export interface BatchTaskSummary {
+  id: number;
+  taskName: string;
+  status: BatchTaskStatus;
+  totalCount: number;
+  createdAt: string;
+  createdByName: string;
+}

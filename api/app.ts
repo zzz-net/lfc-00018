@@ -18,6 +18,7 @@ import userController from './controllers/userController.js'
 import designController from './controllers/designController.js'
 import commentController from './controllers/commentController.js'
 import exportController from './controllers/exportController.js'
+import batchTaskController from './controllers/batchTaskController.js'
 import { getDb } from './db/index.js'
 
 // for esm mode
@@ -67,6 +68,7 @@ app.use('/api/users', userController)
 app.use('/api/designs', exportController)
 app.use('/api/designs', commentController)
 app.use('/api/designs', designController)
+app.use('/api/batch-tasks', batchTaskController)
 
 /**
  * health

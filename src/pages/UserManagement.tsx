@@ -14,6 +14,7 @@ import {
   History,
   AlertCircle,
   Mail,
+  Layers,
 } from 'lucide-react'
 import type { User as UserType, UserRole } from '../../shared/types'
 import { ROLE_LABELS } from '../../shared/types'
@@ -284,6 +285,13 @@ export default function UserManagement() {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/batch-tasks')}
+                className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm"
+              >
+                <Layers className="h-4 w-4" />
+                批量任务中心
+              </button>
               <button
                 onClick={() => setShowLogs(true)}
                 className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm"
