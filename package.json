@@ -10,7 +10,13 @@
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "server:dev": "nodemon",
-    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
+    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
+    "verify": "npm run verify:readme && npm run verify:database && npm run verify:accounts && npm run verify:e2e",
+    "verify:readme": "node scripts/verify-readme-accounts.mjs",
+    "verify:database": "node scripts/verify-database.mjs",
+    "verify:accounts": "node scripts/verify-accounts.mjs",
+    "verify:e2e": "node verify-e2e.mjs",
+    "test:formdata": "node test-formdata-import.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

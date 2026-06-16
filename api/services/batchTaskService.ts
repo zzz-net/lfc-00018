@@ -14,93 +14,20 @@ import type {
 } from '../../shared/types.js'
 import {
   USER_IMPORT_DEFAULT_PASSWORD,
-  USER_IMPORT_FIELDS,
   BATCH_TASK_ITEM_TYPE_LABELS,
   ADMIN_OPERATION_TYPES,
 } from '../../shared/types.js'
 import { BusinessError } from './userService.js'
-
-function parseCsvLines(content: string): { headers: string[]; dataRows: Array<{ lineNumber: number; values: string[] }> } {
-  const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  const allLines = normalized.split('\n')
-  if (allLines.length === 0) {
-    return { headers: [], dataRows: [] }
-  }
-
-  const headers = allLines[0]
-    .split(',')
-    .map((h) => h.trim())
-    .filter((h) => h.length > 0)
-
-  const dataRows: Array<{ lineNumber: number; values: string[] }> = []
-  for (let i = 1; i < allLines.length; i++) {
-    const rawLine = allLines[i]
-    if (!rawLine || rawLine.trim().length === 0) continue
-    const values = rawLine.split(',').map((v) => {
-      let t = v.trim()
-      if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1)
-      return t
-    })
-    dataRows.push({ lineNumber: i + 1, values })
-  }
-
-  return { headers, dataRows }
-}
-
-function buildDefaultMapping(headers: string[]): FieldMapping {
-  const mapping: FieldMapping = {}
-  const lowerToActual: Record<string, string> = {}
-  headers.forEach((h) => {
-    lowerToActual[h.toLowerCase()] = h
-  })
-
-  USER_IMPORT_FIELDS.forEach((field) => {
-    const candidates = [
-      field.key.toLowerCase(),
-      field.label,
-      field.label.toLowerCase(),
-    ]
-    for (const cand of candidates) {
-      if (lowerToActual[cand]) {
-        mapping[field.key] = lowerToActual[cand]
-        break
-      }
-    }
-  })
-
-  return mapping
-}
-
-function isEmailValid(email: string): boolean {
-  if (!email) return true
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-function isRoleValid(role: string): boolean {
-  return ['admin', 'reviewer', 'submitter', '管理员', '评审人', '提交者'].includes(role)
-}
-
-function normalizeRole(role: string): UserRole {
-  const map: Record<string, UserRole> = {
-    admin: 'admin',
-    reviewer: 'reviewer',
-    submitter: 'submitter',
-    '管理员': 'admin',
-    '评审人': 'reviewer',
-    '提交者': 'submitter',
-  }
-  return map[role] || 'submitter'
-}
-
-function isActionField(headers: string[], fieldMapping: FieldMapping): boolean {
-  const actionKeys = ['action', '操作', '变更类型']
-  for (const h of headers) {
-    if (actionKeys.some(k => h.toLowerCase().includes(k.toLowerCase()))) {
-      return true
-    }
-  }
-  return !!fieldMapping.action
-}
+import { parseCsvLines, escapeCsv } from '../utils/csv.js'
+import {
+  isEmailValid,
+  isRoleValid,
+  normalizeRole,
+  buildDefaultMapping,
+  isActionField,
+  findActionHeader,
+  normalizeAction,
+} from '../utils/role.js'
 
 export interface PrecheckBatchResult {
   taskId: number
@@ -159,9 +86,7 @@ export function createAndPrecheckBatchTask(params: {
   }> = []
 
   const hasActionField = isActionField(headers, mapping)
-  const actionHeader = hasActionField
-    ? (mapping.action || headers.find(h => h.toLowerCase().includes('action') || h.includes('操作') || h.includes('变更类型')) || '')
-    : ''
+  const actionHeader = hasActionField ? findActionHeader(headers, mapping) : ''
 
   for (const { lineNumber, values } of dataRows) {
     const rowData: Record<string, string> = {}
@@ -174,17 +99,13 @@ export function createAndPrecheckBatchTask(params: {
     const email = mapping.email ? (rowData[mapping.email] || '').trim() : ''
     const role = mapping.role ? (rowData[mapping.role] || '').trim() : ''
     const password = mapping.password ? (rowData[mapping.password] || '').trim() : ''
-    const action = actionHeader ? (rowData[actionHeader] || '').trim().toLowerCase() : ''
+    const action = actionHeader ? (rowData[actionHeader] || '').trim() : ''
 
     const errors: string[] = []
     const warnings: string[] = []
 
-    if (!username) {
-      errors.push('用户名为空')
-    }
-    if (!name) {
-      errors.push('姓名为空')
-    }
+    if (!username) errors.push('用户名为空')
+    if (!name) errors.push('姓名为空')
     if (!role) {
       errors.push('角色为空')
     } else if (!isRoleValid(role)) {
@@ -199,63 +120,66 @@ export function createAndPrecheckBatchTask(params: {
 
     const existingByUsername = username ? existingUsernameMap.get(username.toLowerCase()) : undefined
     const existingByName = name ? existingNameMap.get(name) : undefined
+    const existingUser = existingByUsername || existingByName
 
-    if (hasActionField) {
-      if (action === 'disable' || action === '停用' || action === '删除') {
+    const normalizedAction = hasActionField ? normalizeAction(action) : 'unknown'
+
+    switch (normalizedAction) {
+      case 'disable':
         itemType = 'disable'
-        if (!existingByUsername && !existingByName) {
+        if (existingUser) {
+          oldRole = existingUser.role
+        } else {
           errors.push('停用的用户不存在')
-        } else if (existingByUsername) {
-          oldRole = existingByUsername.role
-        } else if (existingByName) {
-          oldRole = existingByName.role
         }
-      } else if (action === 'update' || action === '更新' || action === '修改' || action === 'role_change' || action === '角色变更') {
+        break
+
+      case 'update':
         itemType = 'role_change'
-        if (existingByUsername) {
-          oldRole = existingByUsername.role
-          if (oldRole === normalizeRole(role)) {
-            warnings.push('角色未发生变化')
-          }
-        } else if (existingByName) {
-          oldRole = existingByName.role
+        if (existingUser) {
+          oldRole = existingUser.role
           if (oldRole === normalizeRole(role)) {
             warnings.push('角色未发生变化')
           }
         } else {
           errors.push('角色变更的用户不存在')
         }
-      } else {
-        itemType = 'new'
-        if (existingByUsername) {
-          itemType = 'duplicate_account'
-          errors.push(`用户名「${username}」已存在`)
-        }
-        if (existingByName) {
-          if (itemType === 'duplicate_account') {
-            errors.push(`姓名「${name}」已存在`)
-          } else {
+        break
+
+      case 'add':
+      case 'unknown':
+      default:
+        if (hasActionField) {
+          itemType = 'new'
+          if (existingByUsername) {
+            itemType = 'duplicate_account'
+            errors.push(`用户名「${username}」已存在`)
+          }
+          if (existingByName) {
+            if (itemType === 'duplicate_account') {
+              errors.push(`姓名「${name}」已存在`)
+            } else {
+              itemType = 'name_conflict'
+              errors.push(`姓名「${name}」已存在`)
+            }
+          }
+        } else {
+          if (existingByUsername) {
+            oldRole = existingByUsername.role
+            if (role && normalizeRole(role) !== existingByUsername.role) {
+              itemType = 'role_change'
+            } else {
+              itemType = 'duplicate_account'
+              errors.push(`用户名「${username}」已存在`)
+            }
+          } else if (existingByName) {
             itemType = 'name_conflict'
             errors.push(`姓名「${name}」已存在`)
+          } else {
+            itemType = 'new'
           }
         }
-      }
-    } else {
-      if (existingByUsername) {
-        const existingUser = existingByUsername
-        oldRole = existingUser.role
-        if (role && normalizeRole(role) !== existingUser.role) {
-          itemType = 'role_change'
-        } else {
-          itemType = 'duplicate_account'
-          errors.push(`用户名「${username}」已存在`)
-        }
-      } else if (existingByName) {
-        itemType = 'name_conflict'
-        errors.push(`姓名「${name}」已存在`)
-      } else {
-        itemType = 'new'
-      }
+        break
     }
 
     if (username) {
@@ -293,8 +217,10 @@ export function createAndPrecheckBatchTask(params: {
       }
     }
 
-    const status: BatchTaskItemStatus = errors.length > 0 ? 'pending' : 'pending'
-    const errorMessage = errors.length > 0 ? errors.join('；') : null
+    const hasErrors = errors.length > 0
+    const status: BatchTaskItemStatus = hasErrors ? 'skipped' : 'pending'
+    const errorMessage = hasErrors ? errors.join('；') : null
+    const skipReason = hasErrors ? '数据校验不通过' : null
 
     items.push({
       itemType,
@@ -306,7 +232,7 @@ export function createAndPrecheckBatchTask(params: {
       oldRole,
       password: password || null,
       status,
-      skipReason: null,
+      skipReason,
       errorMessage,
       rowData,
     })
@@ -593,15 +519,6 @@ export function exportConflictCsv(taskId: number): string {
   }
 
   return '\uFEFF' + lines.join('\n')
-}
-
-function escapeCsv(value: string): string {
-  if (value == null) return ''
-  const s = String(value)
-  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
-    return '"' + s.replace(/"/g, '""') + '"'
-  }
-  return s
 }
 
 export function getBatchTaskSummary(taskId: number): {

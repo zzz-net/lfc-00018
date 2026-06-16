@@ -2,8 +2,7 @@ import { Router, type Request, type Response } from 'express'
 import multer from 'multer'
 import * as userService from '../services/userService.js'
 import { BusinessError } from '../services/userService.js'
-import { authMiddleware } from '../middleware/auth.js'
-import { requirePermission } from '../middleware/permission.js'
+import { requirePermissionByName } from '../middleware/auth.js'
 import type {
   ApiResponse,
   User,
@@ -38,8 +37,7 @@ function handleError(res: Response, error: unknown): void {
 
 router.get(
   '/',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:view'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const users = userService.getUsers()
@@ -55,8 +53,7 @@ router.get(
 
 router.post(
   '/',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:manage'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { username, password, name, role, email } = req.body as {
@@ -89,8 +86,7 @@ router.post(
 
 router.put(
   '/:id',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:manage'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const id = parseInt(req.params.id, 10)
@@ -131,8 +127,7 @@ router.put(
 
 router.delete(
   '/:id',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:manage'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const id = parseInt(req.params.id, 10)
@@ -166,8 +161,7 @@ router.delete(
 
 router.post(
   '/import/precheck',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:import'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       await new Promise<void>((resolve, reject) => {
@@ -230,8 +224,7 @@ router.post(
 
 router.post(
   '/import/submit',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:import'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       await new Promise<void>((resolve, reject) => {
@@ -323,8 +316,7 @@ router.post(
 
 router.post(
   '/import/export-errors',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:import'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { rowErrors, detectedHeaders } = req.body as {
@@ -375,8 +367,7 @@ function escapeCsv(value: string): string {
 
 router.get(
   '/import/draft',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:import'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = req.session.user!.id
@@ -393,8 +384,7 @@ router.get(
 
 router.post(
   '/import/draft',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:import'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = req.session.user!.id
@@ -428,8 +418,7 @@ router.post(
 
 router.delete(
   '/import/draft',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('user:import'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = req.session.user!.id
@@ -446,8 +435,7 @@ router.delete(
 
 router.get(
   '/admin-logs',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('admin_log:view'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const limit = Number(req.query.limit) || 200

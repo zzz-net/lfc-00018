@@ -2,8 +2,7 @@ import { Router, type Request, type Response } from 'express'
 import multer from 'multer'
 import * as designService from '../services/designService.js'
 import { BusinessError } from '../services/userService.js'
-import { authMiddleware } from '../middleware/auth.js'
-import { requirePermission } from '../middleware/permission.js'
+import { requirePermissionByName } from '../middleware/auth.js'
 import type {
   ApiResponse,
   Design,
@@ -98,7 +97,7 @@ function handleError(res: Response, error: unknown): void {
 
 router.get(
   '/',
-  authMiddleware,
+  requirePermissionByName('design:view_all'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const designs = designService.getDesigns()
@@ -114,7 +113,7 @@ router.get(
 
 router.get(
   '/:id',
-  authMiddleware,
+  requirePermissionByName('design:view_all'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const id = parseInt(req.params.id, 10)
@@ -147,8 +146,7 @@ router.get(
 
 router.post(
   '/import',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('design:import'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       await new Promise<void>((resolve, reject) => {
@@ -194,8 +192,7 @@ router.post(
 
 router.post(
   '/:id/claim',
-  authMiddleware,
-  requirePermission(['reviewer', 'admin']),
+  requirePermissionByName('design:claim'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const designId = parseInt(req.params.id, 10)
@@ -254,8 +251,7 @@ router.post(
 
 router.post(
   '/:id/review',
-  authMiddleware,
-  requirePermission(['reviewer', 'admin']),
+  requirePermissionByName('design:review'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const designId = parseInt(req.params.id, 10)
@@ -318,7 +314,7 @@ router.post(
 
 router.post(
   '/:id/resubmit',
-  authMiddleware,
+  requirePermissionByName('design:resubmit'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const designId = parseInt(req.params.id, 10)
@@ -340,14 +336,6 @@ router.post(
       }
 
       const user = req.session.user!
-
-      if (user.role !== 'submitter' && user.role !== 'admin') {
-        res.status(403).json({
-          success: false,
-          error: '只有提交者或管理员才能重新提交',
-        } satisfies ApiResponse)
-        return
-      }
 
       const result = designService.resubmitDesign(designId, user.id, version)
 

@@ -2,7 +2,6 @@ import Database from 'better-sqlite3'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
-import SCHEMA_SQL from './schema.sql.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -28,18 +27,6 @@ export function getDb(): Database.Database {
   return db
 }
 
-export function initDatabase(): void {
-  const database = getDb()
-
-  const cols = database.pragma('table_info(users)') as { name: string }[]
-  const hasEmail = cols.some((c) => c.name === 'email')
-  if (!hasEmail) {
-    database.exec(`ALTER TABLE users ADD COLUMN email TEXT`)
-  }
-
-  database.exec(SCHEMA_SQL)
-}
-
 export function closeDatabase(): void {
   if (db) {
     db.close()
@@ -48,5 +35,14 @@ export function closeDatabase(): void {
 }
 
 export { DB_PATH }
+
+export {
+  initializeDatabase,
+  detectStartupMode,
+  getDatabaseInfo,
+  resetForTesting,
+  type StartupMode,
+  type DatabaseInfo,
+} from './init.js'
 
 export default getDb

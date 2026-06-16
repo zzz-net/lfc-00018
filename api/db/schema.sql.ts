@@ -180,15 +180,6 @@ CREATE INDEX IF NOT EXISTS idx_batch_task_items_status ON batch_task_items(statu
 CREATE INDEX IF NOT EXISTS idx_batch_task_items_username ON batch_task_items(username);
 `
 
-export const INITIAL_USERS_DATA = `
-INSERT OR IGNORE INTO users (username, password_hash, name, role) VALUES
-('admin', '$2a$10$u08PIZ4LDv.fyIcdYIdKAeTe5vOrXjSdnPA9Scgf8jkdPFqWEJNGi', '系统管理员', 'admin'),
-('reviewer1', '$2a$10$ddmAFMku9XWjfjAYEFIq6eMPLvio2w1vu8zNUzS2hFj/wJOE8HxLq', '张评审', 'reviewer'),
-('reviewer2', '$2a$10$ddmAFMku9XWjfjAYEFIq6eMPLvio2w1vu8zNUzS2hFj/wJOE8HxLq', '李评审', 'reviewer'),
-('submitter1', '$2a$10$dthaR99oITFCEiL8MVU.2uokRUZxGHECRv/GSMqZxLwERth8QCxh2', '王设计', 'submitter'),
-('submitter2', '$2a$10$dthaR99oITFCEiL8MVU.2uokRUZxGHECRv/GSMqZxLwERth8QCxh2', '刘设计', 'submitter');
-`
-
 export const SCHEMA_SQL = [
   CREATE_USERS_TABLE,
   CREATE_DESIGNS_TABLE,
@@ -203,7 +194,6 @@ export const SCHEMA_SQL = [
   CREATE_ADMIN_OPERATION_LOGS_INDEXES,
   CREATE_BATCH_TASKS_INDEXES,
   CREATE_BATCH_TASK_ITEMS_INDEXES,
-  INITIAL_USERS_DATA,
 ].join('\n')
 
 export default SCHEMA_SQL

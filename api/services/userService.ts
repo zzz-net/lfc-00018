@@ -15,6 +15,13 @@ import {
   type AdminOperationLog,
   ADMIN_OPERATION_TYPES,
 } from '../../shared/types.js'
+import { parseCsvLines } from '../utils/csv.js'
+import {
+  isEmailValid,
+  isRoleValid,
+  normalizeRole,
+  buildDefaultMapping,
+} from '../utils/role.js'
 
 export class BusinessError extends Error {
   code: string
@@ -150,78 +157,6 @@ export function login(
   }
 
   return { success: true, user }
-}
-
-function parseCsvLines(content: string): { headers: string[]; dataRows: Array<{ lineNumber: number; values: string[] }> } {
-  const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  const allLines = normalized.split('\n')
-  if (allLines.length === 0) {
-    return { headers: [], dataRows: [] }
-  }
-
-  const headers = allLines[0]
-    .split(',')
-    .map((h) => h.trim())
-    .filter((h) => h.length > 0)
-
-  const dataRows: Array<{ lineNumber: number; values: string[] }> = []
-  for (let i = 1; i < allLines.length; i++) {
-    const rawLine = allLines[i]
-    if (!rawLine || rawLine.trim().length === 0) continue
-    const values = rawLine.split(',').map((v) => {
-      let t = v.trim()
-      if (t.startsWith('"') && t.endsWith('"')) t = t.slice(1, -1)
-      return t
-    })
-    dataRows.push({ lineNumber: i + 1, values })
-  }
-
-  return { headers, dataRows }
-}
-
-function buildDefaultMapping(headers: string[]): FieldMapping {
-  const mapping: FieldMapping = {}
-  const lowerToActual: Record<string, string> = {}
-  headers.forEach((h) => {
-    lowerToActual[h.toLowerCase()] = h
-  })
-
-  USER_IMPORT_FIELDS.forEach((field) => {
-    const candidates = [
-      field.key.toLowerCase(),
-      field.label,
-      field.label.toLowerCase(),
-    ]
-    for (const cand of candidates) {
-      if (lowerToActual[cand]) {
-        mapping[field.key] = lowerToActual[cand]
-        break
-      }
-    }
-  })
-
-  return mapping
-}
-
-function isEmailValid(email: string): boolean {
-  if (!email) return true
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-function isRoleValid(role: string): boolean {
-  return ['admin', 'reviewer', 'submitter', '管理员', '评审人', '提交者'].includes(role)
-}
-
-function normalizeRole(role: string): UserRole {
-  const map: Record<string, UserRole> = {
-    admin: 'admin',
-    reviewer: 'reviewer',
-    submitter: 'submitter',
-    '管理员': 'admin',
-    '评审人': 'reviewer',
-    '提交者': 'submitter',
-  }
-  return map[role] || 'submitter'
 }
 
 export function precheckUserImport(
@@ -551,4 +486,4 @@ export function getUserImportLogs(): AdminOperationLog[] {
   return adminLogRepository.findByOperationType(ADMIN_OPERATION_TYPES.USER_IMPORT)
 }
 
-export { USER_IMPORT_DEFAULT_PASSWORD, USER_IMPORT_FIELDS }
+export { USER_IMPORT_FIELDS }

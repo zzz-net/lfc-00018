@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import * as commentService from '../services/commentService.js'
 import { BusinessError } from '../services/userService.js'
-import { authMiddleware } from '../middleware/auth.js'
+import { requirePermissionByName } from '../middleware/auth.js'
 import type { ApiResponse, Comment } from '../../shared/types.js'
 
 const router = Router()
@@ -22,7 +22,7 @@ function handleError(res: Response, error: unknown): void {
 
 router.get(
   '/:id/comments',
-  authMiddleware,
+  requirePermissionByName('design:comment'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const designId = parseInt(req.params.id, 10)
@@ -47,7 +47,7 @@ router.get(
 
 router.post(
   '/:id/comments',
-  authMiddleware,
+  requirePermissionByName('design:comment'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const designId = parseInt(req.params.id, 10)

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import * as exportService from '../services/exportService.js'
 import { BusinessError } from '../services/userService.js'
-import { authMiddleware } from '../middleware/auth.js'
+import { requirePermissionByName } from '../middleware/auth.js'
 import type { ApiResponse, ExportFilter } from '../../shared/types.js'
 
 const router = Router()
@@ -23,7 +23,7 @@ function handleError(res: Response, error: unknown): void {
 
 router.get(
   '/export',
-  authMiddleware,
+  requirePermissionByName('design:export'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { status, submitterId, reviewerId, startDate, endDate } = req.query

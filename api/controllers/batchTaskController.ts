@@ -3,8 +3,7 @@ import multer from 'multer'
 import * as batchTaskService from '../services/batchTaskService.js'
 import type { PrecheckBatchResult } from '../services/batchTaskService.js'
 import { BusinessError } from '../services/userService.js'
-import { authMiddleware } from '../middleware/auth.js'
-import { requirePermission } from '../middleware/permission.js'
+import { requirePermission, requirePermissionByName } from '../middleware/auth.js'
 import type {
   ApiResponse,
   BatchTask,
@@ -34,8 +33,7 @@ function handleError(res: Response, error: unknown): void {
 
 router.get(
   '/',
-  authMiddleware,
-  requirePermission(['admin', 'reviewer', 'submitter']),
+  requirePermissionByName('batch_task:view_list'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const limit = Number(req.query.limit) || 50
@@ -52,8 +50,7 @@ router.get(
 
 router.get(
   '/:id',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:view_detail'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const id = parseInt(req.params.id, 10)
@@ -77,8 +74,7 @@ router.get(
 
 router.get(
   '/:id/summary',
-  authMiddleware,
-  requirePermission(['admin', 'reviewer', 'submitter']),
+  requirePermissionByName('batch_task:view_summary'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const id = parseInt(req.params.id, 10)
@@ -102,8 +98,7 @@ router.get(
 
 router.post(
   '/',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:create'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       await new Promise<void>((resolve, reject) => {
@@ -177,8 +172,7 @@ router.post(
 
 router.patch(
   '/items/:itemId',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:execute'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const itemId = parseInt(req.params.itemId, 10)
@@ -216,8 +210,7 @@ router.patch(
 
 router.post(
   '/:id/bulk-ignore/:itemType',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:execute'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const taskId = parseInt(req.params.id, 10)
@@ -244,8 +237,7 @@ router.post(
 
 router.post(
   '/:id/bulk-restore/:itemType',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:execute'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const taskId = parseInt(req.params.id, 10)
@@ -272,8 +264,7 @@ router.post(
 
 router.post(
   '/:id/execute',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:execute'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const taskId = parseInt(req.params.id, 10)
@@ -300,8 +291,7 @@ router.post(
 
 router.delete(
   '/:id',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:delete'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const taskId = parseInt(req.params.id, 10)
@@ -326,8 +316,7 @@ router.delete(
 
 router.get(
   '/:id/export-conflicts',
-  authMiddleware,
-  requirePermission(['admin']),
+  requirePermissionByName('batch_task:export_conflicts'),
   async (req: Request, res: Response): Promise<void> => {
     try {
       const taskId = parseInt(req.params.id, 10)
