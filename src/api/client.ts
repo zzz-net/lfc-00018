@@ -16,10 +16,17 @@ async function request<T>(
   url: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const isFormData = options.body instanceof FormData
+  
+  const defaultHeaders: Record<string, string> = {}
+  if (!isFormData) {
+    defaultHeaders['Content-Type'] = 'application/json'
+  }
+
   const response = await fetch(`${BASE_URL}${url}`, {
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...defaultHeaders,
       ...options.headers,
     },
     ...options,
