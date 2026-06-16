@@ -1,4 +1,21 @@
 export type UserRole = 'submitter' | 'reviewer' | 'admin';
+export type DraftType = 'users' | 'designs';
+export type PrecheckErrorType =
+  | 'MISSING_REQUIRED_COLUMN'
+  | 'UNKNOWN_HEADER'
+  | 'EMPTY_REQUIRED_FIELD'
+  | 'DUPLICATE_EMAIL'
+  | 'DUPLICATE_NAME'
+  | 'DUPLICATE_USERNAME'
+  | 'INVALID_ROLE'
+  | 'INVALID_EMAIL'
+  | 'USERNAME_EXISTS'
+  | 'EMAIL_EXISTS'
+  | 'NAME_EXISTS'
+  | 'WEAK_PASSWORD'
+  | 'ROW_INTERNAL_DUP_EMAIL'
+  | 'ROW_INTERNAL_DUP_USERNAME'
+  | 'ROW_INTERNAL_DUP_NAME';
 
 export type DesignStatus = 
   | 'pending_claim'
@@ -27,6 +44,7 @@ export interface User {
   id: number;
   username: string;
   name: string;
+  email: string | null;
   role: UserRole;
   createdAt: string;
 }
@@ -134,3 +152,123 @@ export const PRIORITY_LABELS: Record<string, string> = {
   medium: '中',
   low: '低',
 };
+
+export interface UserImportFieldDef {
+  key: 'username' | 'name' | 'email' | 'role' | 'password';
+  label: string;
+  required: boolean;
+  description: string;
+}
+
+export const USER_IMPORT_FIELDS: UserImportFieldDef[] = [
+  { key: 'username', label: '用户名', required: true, description: '登录用户名，全局唯一' },
+  { key: 'name', label: '姓名', required: true, description: '真实姓名，系统内唯一' },
+  { key: 'email', label: '邮箱', required: false, description: '电子邮箱，若提供需唯一且有效' },
+  { key: 'role', label: '角色', required: true, description: 'admin / reviewer / submitter' },
+  { key: 'password', label: '密码', required: false, description: '登录密码，若为空将使用默认密码' },
+];
+
+export const USER_IMPORT_DEFAULT_PASSWORD = 'user123456';
+
+export type FieldMapping = Record<string, string>;
+
+export interface PrecheckRowError {
+  lineNumber: number;
+  rowData: Record<string, string>;
+  errors: {
+    type: PrecheckErrorType;
+    field?: string;
+    value?: string;
+    message: string;
+  }[];
+}
+
+export interface PrecheckHeaderIssue {
+  type: PrecheckErrorType;
+  header?: string;
+  expected?: string[];
+  message: string;
+}
+
+export interface UserImportPrecheckResult {
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  headerIssues: PrecheckHeaderIssue[];
+  rowErrors: PrecheckRowError[];
+  fieldMapping: FieldMapping;
+  detectedHeaders: string[];
+  fileSummary: {
+    fileName: string;
+    fileSize: number;
+    totalDataLines: number;
+  };
+  parsedRows: Array<{
+    lineNumber: number;
+    username: string;
+    name: string;
+    email: string;
+    role: string;
+    password: string;
+    rawRow: Record<string, string>;
+  }>;
+}
+
+export interface UserImportSubmitRequest {
+  fieldMapping: FieldMapping;
+  applyDefaultPassword?: boolean;
+}
+
+export interface UserImportResult {
+  imported: number;
+  skipped: number;
+  skippedReasons: Array<{
+    lineNumber: number;
+    username: string;
+    name: string;
+    reasons: string[];
+  }>;
+  createdUserIds: number[];
+  defaultPasswordUsed: boolean;
+}
+
+export interface ImportDraft {
+  id: number;
+  userId: number;
+  draftType: DraftType;
+  fileName: string;
+  fileSize: number;
+  fieldMapping: FieldMapping;
+  precheckResult: UserImportPrecheckResult;
+  rawCsvContent: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminOperationLog {
+  id: number;
+  operatorId: number;
+  operatorName: string;
+  operationType: string;
+  targetType: string;
+  targetId: string | null;
+  summary: string;
+  details: string | null;
+  createdAt: string;
+}
+
+export const ADMIN_OPERATION_TYPES = {
+  USER_IMPORT: 'user_import',
+  USER_CREATE: 'user_create',
+  USER_UPDATE: 'user_update',
+  USER_DELETE: 'user_delete',
+  DESIGN_IMPORT: 'design_import',
+} as const;
+
+export interface UserImportDraftPayload {
+  precheckResult: UserImportPrecheckResult;
+  fieldMapping: FieldMapping;
+  fileName: string;
+  fileSize: number;
+  rawCsvContent: string;
+}

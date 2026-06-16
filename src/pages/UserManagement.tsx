@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, Users, Plus, Edit2, Trash2, X, User, Shield } from 'lucide-react'
+import {
+  LogOut,
+  Users,
+  Plus,
+  Edit2,
+  Trash2,
+  X,
+  User,
+  Shield,
+  Upload,
+  FileSpreadsheet,
+  History,
+  AlertCircle,
+  Mail,
+} from 'lucide-react'
 import type { User as UserType, UserRole } from '../../shared/types'
 import { ROLE_LABELS } from '../../shared/types'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -8,12 +22,15 @@ import { useUserStore } from '@/store/useUserStore'
 import { useToast } from '@/hooks/useToast'
 import { cn } from '@/lib/utils'
 import ConfirmModal from '@/components/ConfirmModal'
+import UserImportModal from '@/components/UserImportModal'
+import AdminLogViewerModal from '@/components/AdminLogViewerModal'
 
 interface FormData {
   username: string
   name: string
   role: UserRole
   password: string
+  email: string
 }
 
 const roleOptions: { value: UserRole; label: string }[] = [
@@ -31,10 +48,22 @@ const roleColors: Record<string, string> = {
 export default function UserManagement() {
   const navigate = useNavigate()
   const { user, logout, checkAuth } = useAuthStore()
-  const { users, fetchUsers, createUser, updateUser, deleteUser, isLoading } = useUserStore()
+  const {
+    users,
+    importDraft,
+    fetchUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    fetchAdminLogs,
+    loadImportDraft,
+    isLoading,
+  } = useUserStore()
   const { showToast } = useToast()
 
   const [showModal, setShowModal] = useState(false)
+  const [showImport, setShowImport] = useState(false)
+  const [showLogs, setShowLogs] = useState(false)
   const [editingUser, setEditingUser] = useState<UserType | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<UserType | null>(null)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
@@ -43,6 +72,7 @@ export default function UserManagement() {
     name: '',
     role: 'submitter',
     password: '',
+    email: '',
   })
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({})
 
@@ -54,7 +84,9 @@ export default function UserManagement() {
 
   useEffect(() => {
     fetchUsers()
-  }, [fetchUsers])
+    fetchAdminLogs('user_import').catch(() => {})
+    loadImportDraft().catch(() => {})
+  }, [fetchUsers, fetchAdminLogs, loadImportDraft])
 
   const handleLogout = async () => {
     try {
@@ -73,6 +105,7 @@ export default function UserManagement() {
       name: '',
       role: 'submitter',
       password: '',
+      email: '',
     })
     setFormErrors({})
     setShowModal(true)
@@ -85,6 +118,7 @@ export default function UserManagement() {
       name: userData.name,
       role: userData.role,
       password: '',
+      email: userData.email || '',
     })
     setFormErrors({})
     setShowModal(true)
@@ -108,6 +142,10 @@ export default function UserManagement() {
       errors.name = '请输入姓名'
     }
 
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errors.email = '邮箱格式不正确'
+    }
+
     if (!editingUser && !formData.password) {
       errors.password = '请输入密码'
     } else if (formData.password && formData.password.length < 6) {
@@ -124,9 +162,10 @@ export default function UserManagement() {
 
     try {
       if (editingUser) {
-        const updateData: { name?: string; role?: UserRole; password?: string } = {
+        const updateData: { name?: string; role?: UserRole; password?: string; email?: string | null } = {
           name: formData.name.trim(),
           role: formData.role,
+          email: formData.email.trim() || null,
         }
         if (formData.password) {
           updateData.password = formData.password
@@ -139,6 +178,7 @@ export default function UserManagement() {
           name: formData.name.trim(),
           role: formData.role,
           password: formData.password,
+          email: formData.email.trim() || null,
         })
         showToast('用户创建成功', 'success')
       }
@@ -216,8 +256,26 @@ export default function UserManagement() {
       </header>
 
       <main className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
+        <div className="max-w-6xl mx-auto space-y-4">
+          {importDraft && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+              <div className="flex-1 text-sm text-amber-800">
+                检测到一份未完成的成员导入草稿（
+                <span className="font-mono">{importDraft.fileName}</span>），更新时间：
+                {new Date(importDraft.updatedAt).toLocaleString('zh-CN')}
+              </div>
+              <button
+                onClick={() => setShowImport(true)}
+                className="px-3 py-1 bg-amber-600 text-white rounded text-xs hover:bg-amber-700 transition flex items-center gap-1"
+              >
+                <History className="h-3.5 w-3.5" />
+                继续导入
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <Users className="h-6 w-6 text-navy-900" />
               <h2 className="text-2xl font-bold text-zinc-900">用户管理</h2>
@@ -225,13 +283,30 @@ export default function UserManagement() {
                 {users.length} 个用户
               </span>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              添加用户
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowLogs(true)}
+                className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm"
+              >
+                <History className="h-4 w-4" />
+                操作日志
+              </button>
+              <button
+                onClick={() => setShowImport(true)}
+                className="btn-secondary flex items-center gap-1.5 px-3 py-2 text-sm"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                <Upload className="h-3.5 w-3.5 -ml-1" />
+                批量导入
+              </button>
+              <button
+                onClick={openCreateModal}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                添加用户
+              </button>
+            </div>
           </div>
 
           <div className="bg-white border border-zinc-200 shadow-sm">
@@ -244,6 +319,9 @@ export default function UserManagement() {
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">
                       姓名
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">
+                      邮箱
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-zinc-600 uppercase tracking-wider">
                       角色
@@ -259,13 +337,13 @@ export default function UserManagement() {
                 <tbody className="divide-y divide-zinc-100">
                   {isLoading && users.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center text-zinc-500">
+                      <td colSpan={6} className="px-4 py-12 text-center text-zinc-500">
                         加载中...
                       </td>
                     </tr>
                   ) : users.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-12 text-center text-zinc-500">
+                      <td colSpan={6} className="px-4 py-12 text-center text-zinc-500">
                         暂无用户数据
                       </td>
                     </tr>
@@ -280,6 +358,16 @@ export default function UserManagement() {
                         </td>
                         <td className="px-4 py-3 text-sm text-zinc-900">
                           {userItem.name}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {userItem.email ? (
+                            <span className="text-zinc-700 flex items-center gap-1">
+                              <Mail className="h-3 w-3 text-zinc-400" />
+                              {userItem.email}
+                            </span>
+                          ) : (
+                            <span className="text-zinc-400 text-xs">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <span
@@ -380,6 +468,25 @@ export default function UserManagement() {
 
               <div>
                 <label className="block text-sm font-medium text-zinc-700 mb-1.5">
+                  邮箱
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={cn(
+                    'input',
+                    formErrors.email && 'border-red-500 focus:border-red-500'
+                  )}
+                  placeholder="请输入邮箱（可选）"
+                />
+                {formErrors.email && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.email}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 mb-1.5">
                   角色 <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -455,6 +562,17 @@ export default function UserManagement() {
         confirmText="确认登出"
         cancelText="取消"
         type="warning"
+      />
+
+      <UserImportModal
+        isOpen={showImport}
+        onClose={() => setShowImport(false)}
+        onImportSuccess={() => fetchUsers()}
+      />
+
+      <AdminLogViewerModal
+        isOpen={showLogs}
+        onClose={() => setShowLogs(false)}
       />
     </div>
   )

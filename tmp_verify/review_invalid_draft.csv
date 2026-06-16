@@ -1,0 +1,5 @@
+﻿用户名,姓名,角色,邮箱,备注
+rvw616d1,复核草稿甲,管理员,bad-email,邮箱非法
+,复核草稿乙,评审人,rvw616d2@example.com,用户名为空
+rvw616d3,复核草稿丙,unknown_role,rvw616d3@example.com,角色非法
+rvw616d4,复核草稿丁,提交者,rvw616d2@example.com,邮箱与上行重复

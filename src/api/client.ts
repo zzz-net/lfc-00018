@@ -8,6 +8,13 @@ import type {
   ApiResponse,
   ExportFilter,
   ClaimConflictData,
+  UserImportPrecheckResult,
+  UserImportResult,
+  FieldMapping,
+  ImportDraft,
+  AdminOperationLog,
+  PrecheckRowError,
+  UserImportDraftPayload,
 } from '../../shared/types'
 
 const BASE_URL = '/api'
@@ -143,13 +150,13 @@ export const api = {
     getList: () =>
       request<User[]>('/users'),
 
-    create: (user: { username: string; password: string; name: string; role: User['role'] }) =>
+    create: (user: { username: string; password: string; name: string; role: User['role']; email?: string | null }) =>
       request<User>('/users', {
         method: 'POST',
         body: JSON.stringify(user),
       }),
 
-    update: (id: number, data: { name?: string; role?: User['role']; password?: string }) =>
+    update: (id: number, data: { name?: string; role?: User['role']; password?: string; email?: string | null }) =>
       request<void>(`/users/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
@@ -159,5 +166,93 @@ export const api = {
       request<void>(`/users/${id}`, {
         method: 'DELETE',
       }),
+
+    precheckImport: (file: File, fieldMapping?: FieldMapping) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      if (fieldMapping) {
+        formData.append('fieldMapping', JSON.stringify(fieldMapping))
+      }
+      return request<UserImportPrecheckResult>('/users/import/precheck', {
+        method: 'POST',
+        body: formData,
+        headers: {},
+      })
+    },
+
+    precheckImportFromRaw: (payload: { rawCsv: string; fileName: string; fileSize: number; fieldMapping?: FieldMapping }) =>
+      request<UserImportPrecheckResult>('/users/import/precheck', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    submitImport: (payload: {
+      rawCsv: string
+      fieldMapping: FieldMapping
+      applyDefaultPassword?: boolean
+      fileName?: string
+    }) =>
+      request<UserImportResult>('/users/import/submit', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    submitImportWithFile: (file: File, fieldMapping: FieldMapping, applyDefaultPassword = true) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('fieldMapping', JSON.stringify(fieldMapping))
+      formData.append('applyDefaultPassword', String(applyDefaultPassword))
+      return request<UserImportResult>('/users/import/submit', {
+        method: 'POST',
+        body: formData,
+        headers: {},
+      })
+    },
+
+    exportImportErrors: (rowErrors: PrecheckRowError[], detectedHeaders: string[]) => {
+      const params = { rowErrors, detectedHeaders }
+      return fetch(`${BASE_URL}/users/import/export-errors`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      }).then(async (r) => {
+        if (!r.ok) {
+          const data = (await r.json()) as ApiResponse
+          throw new Error(data.error || '导出失败')
+        }
+        const blob = await r.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'import_errors.csv'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      })
+    },
+
+    getImportDraft: () =>
+      request<ImportDraft | null>('/users/import/draft'),
+
+    saveImportDraft: (payload: UserImportDraftPayload) =>
+      request<ImportDraft>('/users/import/draft', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+
+    clearImportDraft: () =>
+      request<{ cleared: boolean }>('/users/import/draft', {
+        method: 'DELETE',
+      }),
+
+    getAdminLogs: (type?: 'user_import' | 'all', limit = 200) => {
+      const params = new URLSearchParams()
+      if (type && type !== 'all') params.append('type', type)
+      params.append('limit', String(limit))
+      const qs = params.toString()
+      return request<AdminOperationLog[]>(`/users/admin-logs${qs ? `?${qs}` : ''}`)
+    },
   },
 }

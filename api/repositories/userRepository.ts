@@ -8,7 +8,7 @@ interface UserWithPassword extends User {
 export function findAll(): User[] {
   const db = getDb()
   const stmt = db.prepare(`
-    SELECT id, username, name, role, created_at as createdAt
+    SELECT id, username, name, email, role, created_at as createdAt
     FROM users
     ORDER BY id
   `)
@@ -18,7 +18,7 @@ export function findAll(): User[] {
 export function findById(id: number): User | undefined {
   const db = getDb()
   const stmt = db.prepare(`
-    SELECT id, username, name, role, created_at as createdAt
+    SELECT id, username, name, email, role, created_at as createdAt
     FROM users
     WHERE id = ?
   `)
@@ -28,7 +28,7 @@ export function findById(id: number): User | undefined {
 export function findByUsername(username: string): UserWithPassword | undefined {
   const db = getDb()
   const stmt = db.prepare(`
-    SELECT id, username, name, role, password_hash, created_at as createdAt
+    SELECT id, username, name, email, role, password_hash, created_at as createdAt
     FROM users
     WHERE username = ?
   `)
@@ -38,35 +38,65 @@ export function findByUsername(username: string): UserWithPassword | undefined {
 export function findByName(name: string): UserWithPassword | undefined {
   const db = getDb()
   const stmt = db.prepare(`
-    SELECT id, username, name, role, password_hash, created_at as createdAt
+    SELECT id, username, name, email, role, password_hash, created_at as createdAt
     FROM users
     WHERE name = ?
   `)
   return stmt.get(name) as UserWithPassword | undefined
 }
 
+export function findByEmail(email: string): UserWithPassword | undefined {
+  const db = getDb()
+  if (!email) return undefined
+  const stmt = db.prepare(`
+    SELECT id, username, name, email, role, password_hash, created_at as createdAt
+    FROM users
+    WHERE email = ?
+  `)
+  return stmt.get(email) as UserWithPassword | undefined
+}
+
 export function findByUsernameOrName(identifier: string): UserWithPassword | undefined {
   return findByUsername(identifier) || findByName(identifier)
+}
+
+export function findAllUsernames(): string[] {
+  const db = getDb()
+  const stmt = db.prepare(`SELECT username FROM users WHERE username IS NOT NULL`)
+  return (stmt.all() as { username: string }[]).map((r) => r.username)
+}
+
+export function findAllEmails(): string[] {
+  const db = getDb()
+  const stmt = db.prepare(`SELECT email FROM users WHERE email IS NOT NULL AND email != ''`)
+  return (stmt.all() as { email: string }[]).map((r) => r.email)
+}
+
+export function findAllNames(): string[] {
+  const db = getDb()
+  const stmt = db.prepare(`SELECT name FROM users WHERE name IS NOT NULL`)
+  return (stmt.all() as { name: string }[]).map((r) => r.name)
 }
 
 export function create(
   username: string,
   passwordHash: string,
   name: string,
-  role: UserRole
+  role: UserRole,
+  email?: string | null
 ): number {
   const db = getDb()
   const stmt = db.prepare(`
-    INSERT INTO users (username, password_hash, name, role)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO users (username, password_hash, name, role, email)
+    VALUES (?, ?, ?, ?, ?)
   `)
-  const result = stmt.run(username, passwordHash, name, role)
+  const result = stmt.run(username, passwordHash, name, role, email ?? null)
   return Number(result.lastInsertRowid)
 }
 
 export function update(
   id: number,
-  data: Partial<{ name: string; role: string; password_hash: string }>
+  data: Partial<{ name: string; role: string; password_hash: string; email: string | null }>
 ): boolean {
   const db = getDb()
   const fields: string[] = []
@@ -83,6 +113,10 @@ export function update(
   if (data.password_hash !== undefined) {
     fields.push('password_hash = ?')
     values.push(data.password_hash)
+  }
+  if (data.email !== undefined) {
+    fields.push('email = ?')
+    values.push(data.email)
   }
 
   if (fields.length === 0) {

@@ -30,6 +30,13 @@ export function getDb(): Database.Database {
 
 export function initDatabase(): void {
   const database = getDb()
+
+  const cols = database.pragma('table_info(users)') as { name: string }[]
+  const hasEmail = cols.some((c) => c.name === 'email')
+  if (!hasEmail) {
+    database.exec(`ALTER TABLE users ADD COLUMN email TEXT`)
+  }
+
   database.exec(SCHEMA_SQL)
 }
 

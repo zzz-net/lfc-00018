@@ -1,0 +1,8 @@
+﻿行号,用户名,姓名,角色,邮箱,备注,错误原因
+2,testuser1,测试用户1,管理员,bad-email,这是第一条,邮箱「bad-email」格式不正确；用户名「testuser1」已存在于系统中；姓名「测试用户1」已存在于系统中
+3,,测试用户2,reviewer,test2@example.com,用户名为空,用户名为空，这是必填字段；姓名「测试用户2」已存在于系统中；邮箱「test2@example.com」已被其他用户使用
+4,testuser3,,submitter,test3@example.com,姓名为空,姓名为空，这是必填字段；用户名「testuser3」已存在于系统中；邮箱「test3@example.com」已被其他用户使用
+5,testuser4,测试用户4,unknown_role,test4@example.com,角色非法,角色「unknown_role」无效，仅支持 admin/reviewer/submitter 或 管理员/评审人/提交者
+6,testuser1,测试用户5,submitter,dup@example.com,用户名重复（与第1行）,用户名「testuser1」已存在于系统中；用户名「testuser1」与 CSV 内第 2 行重复
+7,testuser6,测试用户1,submitter,dup2@example.com,姓名重复（与第1行）,姓名「测试用户1」已存在于系统中；姓名「测试用户1」与 CSV 内第 2 行重复
+8,testuser7,测试用户7,reviewer,test2@example.com,邮箱重复（与第2行）,邮箱「test2@example.com」已被其他用户使用；邮箱「test2@example.com」与 CSV 内第 3 行重复

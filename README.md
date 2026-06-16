@@ -57,7 +57,97 @@ npm run client:dev
 - **评审人**: 认领设计稿、评审（通过/退回）、添加评论
 - **提交者**: 查看自己的设计稿、重新提交、添加评论
 
-## CSV 导入
+## 成员 CSV 批量导入
+
+管理员可以通过 CSV 文件批量创建用户，系统提供完整的字段映射、预检查、错误导出、草稿恢复和操作日志功能。
+
+### 导入流程
+
+导入采用 **4 步向导式** 界面：
+
+1. **选择文件**：拖拽或点击上传 CSV 文件
+2. **字段映射**：将 CSV 表头映射到系统字段（支持自动识别中英文）
+3. **预检查**：逐行校验数据质量，展示全部错误原因
+4. **导入结果**：显示成功、跳过、失败的数量及明细
+
+### 支持的系统字段
+
+| 字段名 | 必填 | 说明 |
+|--------|------|------|
+| `username` | ✅ | 登录用户名，全局唯一 |
+| `name` | ✅ | 真实姓名，系统内唯一 |
+| `role` | ✅ | 角色：`admin` / `reviewer` / `submitter`（或中文：管理员/评审人/提交者） |
+| `email` | ❌ | 电子邮箱，若提供需唯一且格式有效 |
+| `password` | ❌ | 登录密码，若为空将使用默认密码 `user123456` |
+
+### 预检查校验规则
+
+系统在导入前会执行全面校验，**所有问题都会在弹窗中逐条展示原因**，不会只给模糊提示：
+
+| 错误类型 | 说明 |
+|----------|------|
+| `MISSING_REQUIRED_COLUMN` | CSV 缺少必填列（如没有用户名字段） |
+| `UNKNOWN_HEADER` | 存在未识别的表头列，可手动选择映射或忽略 |
+| `EMPTY_REQUIRED_FIELD` | 必填字段为空 |
+| `INVALID_ROLE` | 角色值不是支持的类型 |
+| `INVALID_EMAIL` | 邮箱格式不正确 |
+| `WEAK_PASSWORD` | 密码长度不足 6 位 |
+| `USERNAME_EXISTS` | 用户名已在系统中存在 |
+| `NAME_EXISTS` | 姓名已在系统中存在 |
+| `EMAIL_EXISTS` | 邮箱已在系统中存在 |
+| `ROW_INTERNAL_DUP_USERNAME` | CSV 文件内用户名重复 |
+| `ROW_INTERNAL_DUP_NAME` | CSV 文件内姓名重复 |
+| `ROW_INTERNAL_DUP_EMAIL` | CSV 文件内邮箱重复 |
+
+### 错误行导出
+
+校验不通过的行可以**单独导出为带错误说明的 CSV**，方便修改后重新导入：
+
+- 导出的 CSV 首列是**行号**，方便定位原始文件
+- 保留所有原始数据列
+- 末尾增加 **"错误原因"** 列，多个错误用中文分号分隔
+- 文件带 UTF-8 BOM，Excel/WPS 直接打开不乱码
+
+### 可恢复草稿
+
+导入过程中的进度会自动保存为草稿，**应用重启后可以继续**：
+
+- 保存内容：CSV 原始内容、字段映射选择、预检查结果
+- 保存时机：字段映射变更、预检查完成后自动保存（debounce 600ms）
+- 恢复方式：页面顶部出现琥珀色提示条，点击「继续导入」即可恢复
+- 安全保障：草稿存在独立的 `import_drafts` 表，**正式提交前不会写入 `users` 表**
+- 自动清理：导入成功后自动清除草稿
+
+### 管理员操作日志
+
+所有导入操作都会记录到管理员操作日志，可在「操作日志」弹窗中查看：
+
+- 操作人、操作时间
+- 导入的文件名
+- 成功数量、跳过数量、失败数量
+- 跳过的具体原因和行号
+- 创建的用户 ID 列表
+
+### 界面操作
+
+1. 使用管理员账号登录
+2. 进入 **「用户管理」** 页面
+3. 点击顶部的 **「批量导入」** 按钮
+4. 选择 CSV 文件 → 确认字段映射 → 查看预检查结果
+5. （可选）导出错误行修改后重新导入
+6. 点击 **「确认导入」** 完成
+7. 点击 **「操作日志」** 查看历史导入记录
+
+### 示例 CSV
+
+```csv
+用户名,姓名,角色,邮箱,备注
+zhangsan,张三,管理员,zhangsan@example.com,测试用户1
+lisi,李四,评审人,lisi@example.com,测试用户2
+wangwu,王五,提交者,wangwu@example.com,测试用户3
+```
+
+## 设计稿 CSV 导入
 
 ### 表头格式
 
@@ -127,6 +217,7 @@ pending_claim → reviewing → passed
 ## 主要功能
 
 - ✅ 设计稿清单导入（CSV 格式）
+- ✅ 成员批量导入（CSV + 字段映射 + 预检查 + 错误导出）
 - ✅ 五状态流转（待认领 → 评审中 → 退回 → 待复审 → 通过）
 - ✅ 提交者 / 评审人 / 管理员 三角色权限
 - ✅ 评论历史记录
@@ -134,6 +225,8 @@ pending_claim → reviewing → passed
 - ✅ 乐观锁并发控制（同时认领只有一个成功）
 - ✅ 评审纪要导出（Markdown 格式）
 - ✅ 队列顺序保留（按导入顺序排列）
+- ✅ 可恢复导入草稿（应用重启后可继续）
+- ✅ 管理员操作日志（导入 / 创建 / 更新 / 删除）
 
 ## API 说明
 
@@ -152,6 +245,26 @@ pending_claim → reviewing → passed
 - `POST /api/designs/:id/review` - 评审（通过/退回）
 - `POST /api/designs/:id/resubmit` - 重新提交
 - `GET /api/designs/export` - 导出评审纪要（Markdown）
+
+### 用户管理
+
+- `GET /api/users` - 获取用户列表
+- `POST /api/users` - 创建用户
+- `PUT /api/users/:id` - 更新用户
+- `DELETE /api/users/:id` - 删除用户
+
+#### 成员导入
+
+- `POST /api/users/import/precheck` - CSV 预检查（支持 FormData 文件上传 或 JSON rawCsv）
+- `POST /api/users/import/submit` - 正式提交导入
+- `POST /api/users/import/export-errors` - 导出错误行 CSV
+- `GET /api/users/import/draft` - 获取导入草稿
+- `POST /api/users/import/draft` - 保存导入草稿
+- `DELETE /api/users/import/draft` - 清除导入草稿
+
+#### 操作日志
+
+- `GET /api/users/admin-logs` - 获取管理员操作日志（支持 `?type=user_import` 筛选）
 
 ### 评论
 
