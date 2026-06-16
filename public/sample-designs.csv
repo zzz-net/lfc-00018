@@ -1,0 +1,11 @@
+designId,name,description,submitter,priority
+DESIGN-001,产品首页改版设计,优化首页视觉效果和用户体验，提升转化率,submitter1,high
+DESIGN-002,个人中心页面设计,重构个人中心布局，新增消息通知功能,submitter1,medium
+DESIGN-003,商品详情页优化,调整商品展示顺序，增加评价模块,submitter2,high
+DESIGN-004,购物车界面升级,支持批量操作，优化结算流程,submitter2,medium
+DESIGN-005,登录注册页设计,全新设计登录注册流程，支持第三方登录,submitter1,low
+DESIGN-006,订单管理后台,管理员订单管理界面，支持筛选和导出,submitter2,high
+DESIGN-007,支付流程设计,优化支付体验，增加多种支付方式,submitter1,medium
+DESIGN-008,会员权益页面,展示会员等级和对应权益,submitter2,low
+DESIGN-009,客服聊天界面,实时客服聊天功能，支持图片发送,submitter1,high
+DESIGN-010,营销活动落地页,双11活动专题页面设计,submitter2,medium

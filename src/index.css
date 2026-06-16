@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 font-medium text-sm border-2 rounded-none transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .btn-primary {
+    @apply btn bg-navy-900 text-white border-navy-900 hover:bg-navy-800 hover:border-navy-800 focus:ring-navy-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-navy-900 border-navy-900 hover:bg-navy-50 focus:ring-navy-500;
+  }
+  
+  .btn-danger {
+    @apply btn bg-status-returned text-white border-status-returned hover:bg-red-600 hover:border-red-600 focus:ring-red-500;
+  }
+  
+  .btn-success {
+    @apply btn bg-status-passed text-white border-status-passed hover:bg-emerald-600 hover:border-emerald-600 focus:ring-emerald-500;
+  }
+  
+  .btn-warning {
+    @apply btn bg-status-pending text-white border-status-pending hover:bg-amber-600 hover:border-amber-600 focus:ring-amber-500;
+  }
+  
+  .btn-info {
+    @apply btn bg-status-reviewing text-white border-status-reviewing hover:bg-sky-600 hover:border-sky-600 focus:ring-sky-500;
+  }
+  
+  .btn-purple {
+    @apply btn bg-status-pendingReview text-white border-status-pendingReview hover:bg-violet-600 hover:border-violet-600 focus:ring-violet-500;
+  }
+  
+  .btn-disabled {
+    @apply btn bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed;
+  }
+  
+  .input {
+    @apply w-full px-3 py-2 border-2 border-zinc-300 rounded-none text-sm focus:outline-none focus:border-navy-900 focus:ring-0 transition-colors;
+  }
+  
+  .card {
+    @apply bg-white border border-zinc-200 shadow-card transition-all duration-200;
+  }
+  
+  .card-hover {
+    @apply hover:shadow-card-hover hover:-translate-y-0.5 cursor-pointer;
+  }
+  
+  .column-header {
+    @apply relative pl-3 py-3 font-semibold text-sm text-zinc-800 border-b-2 border-zinc-200;
+  }
+  
+  .column-header::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-1;
+  }
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #fafafa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f4f4f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
