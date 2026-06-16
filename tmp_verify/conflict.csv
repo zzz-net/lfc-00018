@@ -1,0 +1,3 @@
+designId,name,description,submitter,priority
+VERIFY-001,已存在的设计,应该冲突,王设计,high
+VERIFY-004,新设计,不冲突,submitter1,low
